@@ -1,0 +1,61 @@
+Autorzy treści: Aleksy Schubert, Piotr Cyrankiewicz.
+
+Pula wątków to mechanizm pozwalający na uzyskanie współbieżnego wykonywanie wielu zadań w ramach jednego programu. 
+W skład puli wchodzi pewna liczba wątków roboczych (ang. worker threads), czekających na pojawienie się pracy do wykonania.
+Użycie puli wątków pozwala uniknąć ciągłego powoływania i czekania na zakończenie się wątku przy wykonywaniu krótkotrwałych zadań współbieżnych. 
+Pozwala też na wykonywanie bardzo dużej liczby zadań niezależnie od siebie w sytuacji, gdy liczba dostępnych potoków przetwarzania jest ograniczona.
+
+Polecenie
+    Zaimplementuj pulę wątków zgodnie z poniższym opisem szczegółowym
+    Zaimplementuj obliczenia future zgodnie z poniższym opisem szczegółowym 
+    Napisz program przykładowy macierz, obliczający za pomocą puli wątków sumy wierszy z zadanej tablicy 
+    Napisz program przykładowy silnia, obliczający za pomocą mechanizmu future silnię zadanej liczby 
+    Zadbaj, aby kod był napisany w sposób klarowny i rzetelny zgodnie z poniższymi wytycznymi. 
+
+Pula wątków:
+Wywołanie thread_pool_init inicjuje argument wskazywany przez pool jako nową pulę, w której będzie funkcjonować pool_size wątków obsługujących zgłoszone do wykonania zadania.
+Za gospodarkę pamięcią wskazywaną przez pool odpowiada użytkownik biblioteki. Poprawność działania biblioteki jest gwarantowana tylko,
+jeśli każda pula stworzona przez thread_pool_init jest niszczona przez wywołanie thread_pool_destroy z argumentem reprezentującym tę pulę.
+
+Wywołanie defer(pool, runnable) zleca puli wątków pool wykonanie zadania opisanego przez argument runnable, argumenty function są przekazywane przez wskaźnik args,
+w polu argsz znajduje się długość dostępnego do pisania i czytania buforu znajdującego się pod tym wskaźnikiem. Za zarządzanie pamięcią wskazywaną przez args odpowiada klient biblioteki.
+
+Funkcja function powinna zostać obliczona przez wątek z puli pool; wywołanie defer może zablokować wywołujący je wątek, 
+ale jedynie na potrzeby rejestracji zlecenia: powrót z defer jest niezależny od powrotu z wykonania function przez pulę.
+
+Zadania zlecone do wykonania przez defer powinny móc wykonywać się współbieżnie i na tyle niezależnie od siebie, na ile to możliwe.
+Można ograniczyć liczbę współbieżnie wykonywanych zadań do rozmiaru puli. Pula w czasie swojego działania nie powinna powoływać więcej wątków niż określono parametrem pool_size.
+Utworzone wątki są utrzymywane aż do wywołania thread_pool_destroy.
+
+Future:
+Wywołanie int err = async(pool, future_value, callable) inicjuje pamięć wskazywaną przez future_value. Za zarządanie tą pamięcią odpowiada użytkownik biblioteki.
+ Na puli pool zlecane jest wykonanie function z argumentu callable. Funkcja function zwraca wskaźnik do wyniku. Użytkownik biblioteki powinien zadbać, 
+żeby poprawnie ustawiła też rozmiar wyniku wykorzystując do tego celu trzeci argument typu size_t*.
+
+Wołający może teraz:
+    Zaczekać na zakończenie wykonania funkcji function przez wywołanie:
+    void *result = await(future_value);
+    Za gospodarkę pamięcią wskazywaną przez wskaźnik result odpowiada użytkownik biblioteki (pamięć ta może zostać przekazana do funkcji function za pomocą jej argumentów lub w tej funkcji zaalokowana).
+    Zlecić jakiejś puli, niekoniecznie tej, która zainicjowała future_value, wywołanie innej funkcji na wyniku:
+    err = map(pool2, mapped_value, future_value, function2);
+
+Programy, w których aktywnie działa jakaś pula wątków, powinny mieć automatycznie ustawioną obsługę sygnałów. 
+Ta obsługa powinna zapewniać, że program po otrzymaniu sygnału (SIGINT) zablokuje możliwość dodawania nowych zadań do działających pul,
+dokończy wszystkie obliczenia zlecone dotąd działającym pulom, a następnie zniszczy działające pule.
+
+Macierz:
+Program macierz ma ze standardowego wejścia wczytywać dwie liczby k oraz n, każda w osobnym wierszu. Liczby te oznaczają odpowiednio liczbę wierszy oraz kolumn macierzy. 
+Następnie program ma wczytać k*n linijek z danymi, z których każda zawiera dwie, oddzielone spacją liczby: v, t.
+Liczba v umieszczona w linijce i (numerację linijek zaczynamy od 0) określa wartość macierzy z wiersza floor(i/n) 
+(numerację kolumn i wierszy zaczynamy od 0) oraz kolumny i mod n. 
+Liczba t to liczba milisekund, jakie są potrzebne do obliczenia wartości v.
+
+Program ma za zadanie wczytać tak sformatowane wejście (można zakładać, że podawane będą tylko poprawne dane), a następnie za pomocą puli wątków zawierającej 4 wątki policzyć sumy wierszy,
+przy czym pojedyncze zadanie obliczeniowe powinno podawać w wyniku wartość pojedynczej komórki macierzy, odczekawszy liczbę milisekund,
+które zostały wczytane jako potrzebne do obliczenia tej wartości (np. zadanie obliczeniowe wyliczenia wartości 3 z macierzy powyżej powinno odczekiwać 11 milisekund).
+Po obliczeniu należy wypisać sumy kolejnych wierszy na standardowe wyjście, po jednej sumie w wierszu.
+
+Silnia:
+Program silnia powinien wczytywać ze standardowego wejścia pojedynczą liczbę n, a następnie obliczać za pomocą puli 3 wątków liczbę n!. 
+Po obliczeniu tej liczby wynik powinien zostać wypisany na standardowe wyjście. 
+Program powinien wyliczać silnię, wykorzystując funkcję map i przekazując jej w future_value częściowe iloczyny
